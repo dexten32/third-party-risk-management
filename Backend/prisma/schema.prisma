@@ -1,0 +1,87 @@
+  // This is your Prisma schema file,
+  // learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+  // Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+  // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+  generator client {
+    provider = "prisma-client-js"
+  }
+
+  datasource db {
+    provider  = "postgresql"
+    url       = env("DATABASE_URL")
+    directUrl = env("DIRECT_URL")
+  }
+
+
+
+  model User {
+    id            String   @id @default(cuid())
+    name          String
+    email         String   @unique
+    password      String
+    contactNumber String?
+
+    role               Role
+    verificationStatus VerificationStatus @default(PENDING)
+
+    
+    clientId String?
+    client   User?     @relation("ClientVendors", fields: [clientId], references: [id])
+    vendors  User[]    @relation("ClientVendors")
+
+    // Vendor-specific fields
+    questionnaireStatus QuestionnaireStatus? @default(INCOMPLETE)
+    questionnaire       Questionnaire[]      // Only filled if role === VENDOR
+    summaries           Summary[]            // Only filled if role === VENDOR
+
+    createdAt DateTime @default(now())
+  }
+
+  model Questionnaire {
+    id       String   @id @default(cuid())
+
+    vendor   User     @relation(fields: [vendorId], references: [id])
+    vendorId String
+    questionKey String?
+
+    answerType AnswerType
+    fileUrl    String?
+    comment    String?
+
+    createdAt DateTime @default(now())
+  }
+
+  model Summary {
+    id       String   @id @default(cuid())
+
+    
+    vendor   User     @relation(fields: [vendorId], references: [id])
+    vendorId String   @unique
+    parsedContent   String
+
+    createdAt DateTime @default(now())
+  }
+
+  enum Role {
+    COMPANY
+    CLIENT
+    VENDOR
+  }
+
+  enum VerificationStatus {
+    PENDING
+    APPROVED
+    REJECTED
+  }
+
+  enum AnswerType {
+    YES_FILE
+    NO_COMMENT
+  }
+
+  enum QuestionnaireStatus {
+    INCOMPLETE
+    COMPLETE
+  }
