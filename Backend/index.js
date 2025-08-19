@@ -48,10 +48,7 @@ app.use("/api/company", companyRoutes);
 // Shared routes  
 app.use("/api/shared", sharedRoutes);
 
-// Health check
-app.get("/", (req, res) => {
-  res.send("Risk Management Backend is Running");
-});
+
 
 // Static file serving for uploads
 app.use('/api/uploads', express.static(path.join(__dirname, 'uploads')));
