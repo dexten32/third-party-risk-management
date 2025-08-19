@@ -5,8 +5,6 @@ import {
   FaFileUpload, FaComment, FaSave, FaEdit, FaExchangeAlt,
   FaCheckCircle, FaTimesCircle
 } from 'react-icons/fa';
-
-// Fixed list of questions to render the questionnaire
 const fixedQuestions = [
   { key: 'q1_company_profile', text: 'Q1. Provide your company profile.' },
   { key: 'q2_tax_compliance', text: 'Q2. Provide proof of tax compliance.' },
@@ -19,7 +17,6 @@ const QuestionnaireList = ({ vendorId, token, userRole, initialAnswers = [] }) =
   const [loading, setLoading] = useState(false);
   const [commentEditing, setCommentEditing] = useState({});
 
-  // Map initial answers to local state
   useEffect(() => {
     const mapped = {};
     initialAnswers.forEach((ans) => {
@@ -81,7 +78,7 @@ const QuestionnaireList = ({ vendorId, token, userRole, initialAnswers = [] }) =
           formData.append('questionKey', key);
           formData.append('answerType', 'YES_FILE');
 
-          return fetch(`${API_BASE_URL}/api/vendor/questionnaire`, {
+          return fetch(`${API_BASE_URL}/vendor/questionnaire`, {
             method: 'POST',
             headers: { Authorization: `Bearer ${token}` },
             body: formData,
@@ -89,7 +86,7 @@ const QuestionnaireList = ({ vendorId, token, userRole, initialAnswers = [] }) =
         }
 
         if (ans.answerType === 'NO_COMMENT' && ans.comment) {
-          return fetch(`${API_BASE_URL}/api/vendor/questionnaire`, {
+          return fetch(`${API_BASE_URL}/vendor/questionnaire`, {
             method: 'POST',
             headers: {
               "Content-Type": "application/json",

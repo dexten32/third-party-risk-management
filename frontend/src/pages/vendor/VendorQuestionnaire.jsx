@@ -1,4 +1,3 @@
-// src/pages/VendorQuestionnaire.jsx
 import React, { useEffect, useState } from "react";
 import QuestionnaireList from "../../components/questionnaireComponents/QuestionnaireList";
 import { API_BASE_URL } from "../../utils/api";
@@ -9,8 +8,6 @@ export default function VendorQuestionnaire() {
   const [submittedAnswers, setSubmittedAnswers] = useState([]);
 
   const token = localStorage.getItem("token");
-
-  // Decode JWT payload
   const decodeToken = (token) => {
     if (!token) return null;
     try {
@@ -21,7 +18,6 @@ export default function VendorQuestionnaire() {
     }
   };
 
-  // ---------------- GET VENDOR ID FROM TOKEN ----------------
   useEffect(() => {
     if (!token) {
       setLoading(false);
@@ -33,13 +29,12 @@ export default function VendorQuestionnaire() {
     setLoading(false);
   }, [token]);
 
-  // ---------------- FETCH VENDOR ANSWERS ----------------
   useEffect(() => {
     if (!vendorId || !token) return;
 
     const fetchAnswers = async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/api/shared/vendor/${vendorId}/answers`, {
+        const res = await fetch(`${API_BASE_URL}/shared/vendor/${vendorId}/answers`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();
@@ -53,7 +48,6 @@ export default function VendorQuestionnaire() {
     fetchAnswers();
   }, [vendorId, token]);
 
-  // ---------------- RENDER ----------------
   if (loading) return <p>Loading your questionnaire...</p>;
   if (!vendorId) return <p>Unable to load your questionnaire. Please log in again.</p>;
 

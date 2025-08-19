@@ -35,7 +35,6 @@ export default function LeftSidebar() {
         collapsed ? 'w-16' : 'w-64'
       } bg-white border-r border-gray-200 transition-all duration-300 flex flex-col h-screen`}
     >
-      {/* Toggle Button */}
       <div className="p-4 border-b flex justify-between items-center">
         {!collapsed && <span className="text-lg font-semibold">Menu</span>}
         <button
@@ -46,7 +45,6 @@ export default function LeftSidebar() {
         </button>
       </div>
 
-      {/* Nav Items */}
       <nav className="flex-1 px-2 py-4 flex flex-col gap-1">
         {navItems.map((item) => (
           <div

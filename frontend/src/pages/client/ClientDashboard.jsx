@@ -7,7 +7,7 @@ import SummaryDashboard from '../../components/SummaryComponents/SummaryDashboar
 import RightSidebar from '../../components/RightSideBar';
 import { cacheGet, cacheSet, isCacheFresh } from '../../utils/cacheManager';
 
-const CACHE_EXPIRY_MS = 30 * 60 * 1000; // 30 minutes
+const CACHE_EXPIRY_MS = 30 * 60 * 1000;
 const VENDOR_INFO_KEY_PREFIX = 'vendor-info';
 const VENDOR_SUMMARY_KEY_PREFIX = 'vendor-summary';
 
@@ -21,7 +21,6 @@ export default function ClientDashboard() {
   const [loadingSummary, setLoadingSummary] = useState(false);
   const [error, setError] = useState(null);
 
-  // --- Fetch Vendor Info with Cache ---
   useEffect(() => {
     const fetchVendorInfo = async () => {
       if (!selectedVendorId) {
@@ -45,7 +44,7 @@ export default function ClientDashboard() {
       }
 
       try {
-        const res = await fetch(`${API_BASE_URL}/api/company/vendor/${selectedVendorId}`, {
+        const res = await fetch(`${API_BASE_URL}/company/vendor/${selectedVendorId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!res.ok) throw new Error(`Failed to fetch vendor info: ${res.status}`);
@@ -63,7 +62,6 @@ export default function ClientDashboard() {
     fetchVendorInfo();
   }, [selectedVendorId]);
 
-  // --- Fetch Vendor Summary with Cache ---
   useEffect(() => {
     const fetchVendorSummary = async () => {
       if (!selectedVendorId) {
@@ -89,7 +87,7 @@ export default function ClientDashboard() {
       }
 
       try {
-        const res = await fetch(`${API_BASE_URL}/api/shared/vendor-summary/${selectedVendorId}`, {
+        const res = await fetch(`${API_BASE_URL}/shared/vendor-summary/${selectedVendorId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -107,7 +105,6 @@ export default function ClientDashboard() {
           setSummaryText(content);
           setSummaryCreatedAt(createdAt);
 
-          // Store both content & createdAt in cache
           cacheSet(cacheKey, { content, createdAt });
         }
       } catch (err) {

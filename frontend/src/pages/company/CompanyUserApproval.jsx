@@ -6,7 +6,7 @@ import ModalPortal from '../../components/ModalPortal';
 import { Trash2, CheckCircle, XCircle } from 'lucide-react';
 import DeleteConfirmationModal from '../../components/DeleteConfirmationModal';
 
-const POLL_INTERVAL_MS = 30*60*1000; // 30 minutes
+const POLL_INTERVAL_MS = 30*60*1000;
 
 const CompanyUserApproval = () => {
   const [allUsers, setAllUsers] = useState([]);
@@ -17,7 +17,7 @@ const CompanyUserApproval = () => {
     const fetchUsers = async () => {
       console.log('Fetching users...');
     try {
-      const res = await fetch(`${API_BASE_URL}/api/company/users?fresh=true`, {
+      const res = await fetch(`${API_BASE_URL}/company/users?fresh=true`, {
         headers: getAuthHeader(),
       });
       if (res.ok) {
@@ -53,7 +53,7 @@ const CompanyUserApproval = () => {
   };
 
   const confirmDelete = async () => {
-    const res = await fetch(`${API_BASE_URL}/api/company/delete-user/${showModalFor}`, {
+    const res = await fetch(`${API_BASE_URL}/company/delete-user/${showModalFor}`, {
       method: 'DELETE',
       headers: getAuthHeader(),
     });
@@ -65,7 +65,7 @@ const CompanyUserApproval = () => {
   };
 
   const handleAction = async (userId, action) => {
-    const endpoint = `${API_BASE_URL}/api/company/${action}/${userId}`;
+    const endpoint = `${API_BASE_URL}/company/${action}/${userId}`;
     const headers = {
       ...getAuthHeader(),
       'Content-Type': 'application/json',
@@ -113,7 +113,6 @@ const CompanyUserApproval = () => {
         <p>Loading...</p>
       ) : (
         <>
-          {/* Pending Users Section */}
           <div>
             <h3 className="text-xl font-semibold mb-3">Pending Users</h3>
             {pendingUsers.length === 0 ? (
@@ -132,7 +131,6 @@ const CompanyUserApproval = () => {
             )}
           </div>
 
-          {/* Approved Users Section */}
           <div>
             <h3 className="text-xl font-semibold mb-3 mt-6">Approved Users</h3>
             {approvedUsers.length === 0 ? (
@@ -153,7 +151,6 @@ const CompanyUserApproval = () => {
         </>
       )}
 
-      {/* Delete Confirmation Modal */}
           {showModalFor && (
               <DeleteConfirmationModal onCancel={() => setShowModalFor(null)}
                 onConfirm={confirmDelete} />
@@ -166,16 +163,13 @@ const UserCard = ({ user, handleAction, handleDeleteClick }) => {
   return (
     <div className="bg-white shadow-md rounded-xl p-4 mb-4 border hover:shadow-lg transition-all duration-200">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-        {/* Left side: user info */}
         <div className="text-left">
           <p className="font-semibold text-lg">{user.name}</p>
           <p className="text-sm text-gray-500">{user.email}</p>
           <p className="text-sm text-gray-400">Role: {user.role}</p>
         </div>
 
-        {/* Right side: buttons */}
         <div className="flex flex-wrap justify-start sm:justify-end gap-2">
-          {/* Show Approve/Reject if user is NOT approved */}
           {user.verificationStatus === "PENDING" && (
             <>
               <button
@@ -196,7 +190,6 @@ const UserCard = ({ user, handleAction, handleDeleteClick }) => {
             </>
           )}
 
-          {/* Show Delete only if user IS approved */}
           {user.verificationStatus === "APPROVED" && (
             <button
               onClick={() => handleDeleteClick(user.id)}

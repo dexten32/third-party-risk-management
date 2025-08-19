@@ -9,13 +9,11 @@ export default function SummaryDashboard({ vendorId, role, vendorStatus, initial
   const [isEditing, setIsEditing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  // Sync draft and summary whenever initialSummary changes
   useEffect(() => {
     setSummary(initialSummary || "");
     setDraft(initialSummary || "");
   }, [initialSummary]);
 
-  // ----------------- SAVE LOCALLY -----------------
   const handleSaveLocal = useCallback(() => {
     if (!vendorId) return;
     localStorage.setItem(`vendor_${vendorId}_summary`, draft);
@@ -23,13 +21,13 @@ export default function SummaryDashboard({ vendorId, role, vendorStatus, initial
     setIsEditing(false);
   }, [draft, vendorId]);
 
-  // ----------------- SUBMIT TO BACKEND -----------------
+
   const handleSubmit = useCallback(async () => {
     if (!vendorId) return;
     setSubmitting(true);
 
     try {
-      const res = await fetch(`${API_BASE_URL}/api/company/vendor/${vendorId}/summary`, {
+      const res = await fetch(`/company/vendor/${vendorId}/summary`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -55,7 +53,7 @@ export default function SummaryDashboard({ vendorId, role, vendorStatus, initial
     <div className="bg-white rounded-lg shadow border p-6 space-y-4">
       <h3 className="text-lg font-semibold">Summary</h3>
 
-      {/* Summary Content */}
+
       {!isEditing ? (
         <div className="text-gray-700 whitespace-pre-wrap border rounded p-3 bg-gray-50">
           {summary || "No summary uploaded yet."}
@@ -65,11 +63,10 @@ export default function SummaryDashboard({ vendorId, role, vendorStatus, initial
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           className="w-full h-60 border rounded-lg bg-white p-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          readOnly={role !== "COMPANY"} // extra safety
+          readOnly={role !== "COMPANY"} 
         />
       )}
 
-      {/* Action Buttons only for COMPANY */}
       {role === "COMPANY" && (
         <div className="flex gap-3">
           {!isEditing ? (

@@ -20,14 +20,14 @@ export default function RightSidebar({ role, userId, selectedVendorId, setSelect
         if (!token) throw new Error("Authentication token not found.");
 
         if (role === 'COMPANY') {
-          const res = await fetch(`${API_BASE_URL}/api/company/vendors-by-client`, {
+          const res = await fetch(`${API_BASE_URL}/company/vendors-by-client`, {
             headers: { Authorization: `Bearer ${token}` },
           });
           if (!res.ok) throw new Error((await res.json()).error || "Failed to fetch company sidebar data");
           const result = await res.json();
           setClientsData(Array.isArray(result.data) ? result.data : []);
         } else if (role === 'CLIENT') {
-          const res = await fetch(`${API_BASE_URL}/api/client/client-vendors`, {
+          const res = await fetch(`${API_BASE_URL}/client/client-vendors`, {
             headers: { Authorization: `Bearer ${token}` },
           });
           if (!res.ok) throw new Error((await res.json()).error || "Failed to fetch client's vendors");
@@ -96,7 +96,6 @@ export default function RightSidebar({ role, userId, selectedVendorId, setSelect
         collapsed ? 'w-16' : 'w-64'
       } bg-white border-l border-gray-200 transition-all duration-300 flex flex-col relative flex-shrink-0`}
     >
-      {/* Toggle Button */}
       <div className="p-3 border-b border-gray-200 flex items-center justify-between">
         {!collapsed && (
           <h3 className="text-sm font-semibold text-gray-700">
@@ -111,15 +110,12 @@ export default function RightSidebar({ role, userId, selectedVendorId, setSelect
           {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
         </button>
       </div>
-
-      {/* Error message */}
       {error && (
         <div className="p-2 text-red-700 bg-red-100 border border-red-200 text-xs rounded mx-2 mt-2">
           {error}
         </div>
       )}
 
-      {/* Sidebar content */}
       <div className="flex-1 overflow-y-auto px-2 py-3">
         {role === 'COMPANY' &&
           (clientsData.length > 0 ? (

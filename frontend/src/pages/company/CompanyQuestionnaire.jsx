@@ -7,7 +7,7 @@ import { cacheGet, cacheSet, isCacheFresh } from '../../utils/cacheManager';
 
 const USERS_CACHE_KEY = 'company-users';
 const ANSWERS_CACHE_KEY_PREFIX = 'vendor-answers';
-const CACHE_EXPIRY_MS = 30 * 60 * 1000; // 30 min
+const CACHE_EXPIRY_MS = 30 * 60 * 1000;
 
 const CompanyQuestionnairePage = () => {
   const [clients, setClients] = useState([]);
@@ -16,8 +16,6 @@ const CompanyQuestionnairePage = () => {
   const [selectedClient, setSelectedClient] = useState(null);
   const [selectedVendor, setSelectedVendor] = useState(null);
   const [questionnaireAnswers, setQuestionnaireAnswers] = useState([]);
-
-  // ---------------- FETCH USERS WITH CACHE ----------------
   useEffect(() => {
     const fetchUsers = async () => {
       const cached = cacheGet(USERS_CACHE_KEY);
@@ -32,7 +30,7 @@ const CompanyQuestionnairePage = () => {
         const token = getToken();
         if (!token) return;
 
-        const res = await fetch(`${API_BASE_URL}/api/company/users`, {
+        const res = await fetch(`${API_BASE_URL}/company/users`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();
@@ -44,7 +42,6 @@ const CompanyQuestionnairePage = () => {
         setClients(clientsList);
         setAllVendors(vendorsList);
 
-        // Cache users
         cacheSet(USERS_CACHE_KEY, usersArray);
       } catch (err) {
         console.error('Error fetching users:', err);
@@ -54,7 +51,6 @@ const CompanyQuestionnairePage = () => {
     fetchUsers();
   }, []);
 
-  // ---------------- FILTER VENDORS BY CLIENT ----------------
   useEffect(() => {
     if (!selectedClient) {
       setVendors([]);
@@ -65,7 +61,6 @@ const CompanyQuestionnairePage = () => {
     setQuestionnaireAnswers([]);
   }, [selectedClient, allVendors]);
 
-  // ---------------- FETCH QUESTIONNAIRE ANSWERS WITH CACHE ----------------
   useEffect(() => {
     if (!selectedVendor?.id) return;
 
@@ -81,7 +76,7 @@ const CompanyQuestionnairePage = () => {
         const token = getToken();
         if (!token) return;
 
-        const res = await fetch(`${API_BASE_URL}/api/shared/vendor/${selectedVendor.id}/answers`, {
+        const res = await fetch(`${API_BASE_URL}/shared/vendor/${selectedVendor.id}/answers`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();

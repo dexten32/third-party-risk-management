@@ -1,19 +1,19 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { Trash2, XCircle } from 'lucide-react';
-import ModalPortal from './ModalPortal'; // adjust path if needed
+import ModalPortal from './ModalPortal'; 
 
 const DeleteConfirmationModal = ({ onConfirm, onCancel }) => {
   const [inputText, setInputText] = useState('');
   const requiredPhrase = 'Delete this user';
   const inputRef = useRef();
 
-  // Focus input on mount
+
   useEffect(() => {
     const timer = setTimeout(() => inputRef.current?.focus(), 150);
     return () => clearTimeout(timer);
   }, []);
 
-  // Memoize match check for performance
+  
   const isMatch = useMemo(() => inputText.trim() === requiredPhrase, [inputText]);
 
   return (

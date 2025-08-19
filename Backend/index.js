@@ -54,7 +54,15 @@ app.get("/", (req, res) => {
 });
 
 // Static file serving for uploads
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/api/uploads', express.static(path.join(__dirname, 'uploads')));
+
+
+app.use(express.static(path.join(__dirname, "../frontend/dist")));
+
+// React Router fallback → always return index.html
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "../frontend/dist/index.html"));
+});
 
 // 404 handler
 app.use((req, res) => {

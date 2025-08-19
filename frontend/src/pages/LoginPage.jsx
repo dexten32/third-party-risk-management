@@ -13,7 +13,6 @@ export default function AuthPage() {
   const [successMessage, setSuccessMessage] = useState('');
   const navigate = useNavigate();
 
-  // Check cached JWT and user info on mount
   useEffect(() => {
     const cachedToken = localStorage.getItem('authToken');
     const cachedUser = JSON.parse(localStorage.getItem('authUser'));
@@ -116,7 +115,6 @@ export default function AuthPage() {
       <h1 className="text-3xl font-bold text-center">CYNOX SECURITY LLP</h1>
     </div>
 
-    {/* Login/Signup Form */}
     <div className="w-full max-w-md bg-white shadow-lg p-8 rounded-lg">
       <h2 className="text-2xl font-bold text-center mb-6">
         {isLogin ? 'Login' : 'Sign Up'}

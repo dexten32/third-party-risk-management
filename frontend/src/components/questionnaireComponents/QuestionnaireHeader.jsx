@@ -2,15 +2,14 @@ import { useMemo } from 'react';
 import { FaUserCircle, FaBuilding } from 'react-icons/fa';
 
 const QuestionnaireHeader = ({
-  clients = [],           // Only relevant for 'COMPANY' role
-  vendors = [],           // All vendors for 'COMPANY', client-specific for 'CLIENT'
-  selectedClient,         // ID of selected client (COMPANY only)
-  selectedVendor,         // Object of selected vendor for both roles
-  onClientChange,         // Callback for client selection (COMPANY only)
-  onVendorChange,         // Callback for vendor selection (both roles)
-  userRole,               // 'CLIENT' or 'COMPANY'
+  clients = [],           
+  vendors = [],           
+  selectedClient,         
+  selectedVendor,         
+  onClientChange,         
+  onVendorChange,         
+  userRole,               
 }) => {
-  // Memoized vendor list based on selected client
   const vendorsToDisplay = useMemo(() => {
     if (userRole === 'CLIENT') return vendors;
     return selectedClient ? vendors.filter((v) => v.clientId.toString() === selectedClient.toString()) : [];
@@ -27,7 +26,7 @@ const QuestionnaireHeader = ({
       <h2 className="text-xl font-semibold text-gray-800">Questionnaire</h2>
 
       <div className="flex gap-4 items-center">
-        {/* Client Dropdown - Only for COMPANY */}
+        
         {userRole !== 'CLIENT' && (
           <div className="relative">
             <div className={dropdownClasses}>
@@ -51,7 +50,7 @@ const QuestionnaireHeader = ({
           </div>
         )}
 
-        {/* Vendor Dropdown */}
+        
         <div className="relative">
           <div
             className={
@@ -65,7 +64,7 @@ const QuestionnaireHeader = ({
               value={selectedVendor?.id?.toString() || ''}
               onChange={(e) => {
                 const vendor = vendorsToDisplay.find((v) => v.id.toString() === e.target.value);
-                onVendorChange(vendor || null); // Pass full object or null
+                onVendorChange(vendor || null); 
               }}
               disabled={(userRole !== 'CLIENT' && !selectedClient) || vendorsToDisplay.length === 0}
             >

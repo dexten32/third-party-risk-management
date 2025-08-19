@@ -6,7 +6,7 @@ import mammoth from 'mammoth';
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf';
 import { cacheGet, cacheSet, isCacheFresh } from '../../utils/cacheManager';
 
-const CACHE_EXPIRY_MS = 30 * 60 * 1000; // 30 minutes
+const CACHE_EXPIRY_MS = 30 * 60 * 1000;
 const COMPANY_STATS_KEY = 'company-stats';
 const VENDOR_INFO_KEY_PREFIX = 'vendor-info';
 const VENDOR_SUMMARY_KEY_PREFIX = 'vendor-summary';
@@ -20,19 +20,17 @@ export default function CompanyDashboard() {
   const [uploading, setUploading] = useState(false);
   const token = localStorage.getItem('token');
 
-  // ----------------- FETCH DATA WITH CACHE -----------------
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {
         if (selectedVendorId) {
-          // -------- Vendor Info --------
           const vendorInfoKey = `${VENDOR_INFO_KEY_PREFIX}-${selectedVendorId}`;
           const cachedVendor = cacheGet(vendorInfoKey);
           if (cachedVendor && isCacheFresh(cachedVendor.timestamp, CACHE_EXPIRY_MS)) {
             setVendorInfo(cachedVendor.value);
           } else {
-            const vendorRes = await fetch(`${API_BASE_URL}/api/company/vendor/${selectedVendorId}`, {
+            const vendorRes = await fetch(`${API_BASE_URL}/company/vendor/${selectedVendorId}`, {
               headers: { Authorization: `Bearer ${token}` },
             });
             const vendorData = await vendorRes.json();
@@ -40,13 +38,12 @@ export default function CompanyDashboard() {
             cacheSet(vendorInfoKey, vendorData);
           }
 
-          // -------- Vendor Summary --------
           const vendorSummaryKey = `${VENDOR_SUMMARY_KEY_PREFIX}-${selectedVendorId}`;
           const cachedSummary = cacheGet(vendorSummaryKey);
           if (cachedSummary && isCacheFresh(cachedSummary.timestamp, CACHE_EXPIRY_MS)) {
             setSummaryText(cachedSummary.value);
           } else {
-            const summaryRes = await fetch(`${API_BASE_URL}/api/shared/vendor-summary/${selectedVendorId}`, {
+            const summaryRes = await fetch(`${API_BASE_URL}/shared/vendor-summary/${selectedVendorId}`, {
               headers: { Authorization: `Bearer ${token}` },
             });
             const summaryData = await summaryRes.json();
@@ -55,12 +52,11 @@ export default function CompanyDashboard() {
             cacheSet(vendorSummaryKey, content);
           }
         } else {
-          // -------- Company Stats --------
           const cachedStats = cacheGet(COMPANY_STATS_KEY);
           if (cachedStats && isCacheFresh(cachedStats.timestamp, CACHE_EXPIRY_MS)) {
             setCompanyStats(cachedStats.value);
           } else {
-            const statsRes = await fetch(`${API_BASE_URL}/api/company/stats/`, {
+            const statsRes = await fetch(`${API_BASE_URL}/company/stats/`, {
               headers: { Authorization: `Bearer ${token}` },
             });
             const statsData = await statsRes.json();
@@ -78,8 +74,6 @@ export default function CompanyDashboard() {
 
     fetchData();
   }, [selectedVendorId, token]);
-
-  // ----------------- FILE PARSING HELPERS -----------------
   const extractPdfText = async (file) => {
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
@@ -91,8 +85,6 @@ export default function CompanyDashboard() {
     }
     return text.trim();
   };
-
-  // ----------------- HANDLE FILE UPLOAD -----------------
   const handleFileUpload = async (file) => {
     if (!file || !selectedVendorId) return;
     setUploading(true);
@@ -110,14 +102,13 @@ export default function CompanyDashboard() {
 
       if (extractedText) {
         setSummaryText(extractedText);
-        cacheSet(`${VENDOR_SUMMARY_KEY_PREFIX}-${selectedVendorId}`, extractedText); // update cache
+        cacheSet(`${VENDOR_SUMMARY_KEY_PREFIX}-${selectedVendorId}`, extractedText); 
       }
 
-      // Upload to backend
       const formData = new FormData();
       formData.append('summary', file);
 
-      const res = await fetch(`${API_BASE_URL}/api/company/vendor/${selectedVendorId}/summary`, {
+      const res = await fetch(`${API_BASE_URL}/company/vendor/${selectedVendorId}/summary`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
         body: formData,
@@ -125,7 +116,7 @@ export default function CompanyDashboard() {
       const data = await res.json();
       if (data?.data?.content) {
         setSummaryText(data.data.content);
-        cacheSet(`${VENDOR_SUMMARY_KEY_PREFIX}-${selectedVendorId}`, data.data.content); // overwrite cache
+        cacheSet(`${VENDOR_SUMMARY_KEY_PREFIX}-${selectedVendorId}`, data.data.content);
       }
     } catch (err) {
       console.error('Error uploading file:', err);
@@ -136,7 +127,6 @@ export default function CompanyDashboard() {
 
   return (
     <div className="p-6 space-y-6">
-      {/* ----------------- COMPANY OVERVIEW ----------------- */}
       {!selectedVendorId && companyStats && (
         <div className="bg-white rounded-lg border shadow p-6 space-y-4">
           <h3 className="text-lg font-semibold">Company Overview</h3>
@@ -148,11 +138,8 @@ export default function CompanyDashboard() {
           </ul>
         </div>
       )}
-
-      {/* ----------------- VENDOR SECTION ----------------- */}
       {selectedVendorId && (
         <>
-          {/* Upload Section */}
           <div className="bg-white rounded-lg shadow border p-6 space-y-4">
             <h3 className="text-lg font-semibold">Upload Summary Document</h3>
             <div
@@ -172,8 +159,6 @@ export default function CompanyDashboard() {
               </label>
             </div>
           </div>
-
-          {/* Vendor Details */}
           <div className="bg-white rounded-lg shadow border p-6 space-y-2">
             <h3 className="text-lg font-semibold">Vendor Details</h3>
             {loading ? (
@@ -194,7 +179,6 @@ export default function CompanyDashboard() {
             )}
           </div>
 
-          {/* Summary Tab */}
           <SummaryDashboard
             vendorId={selectedVendorId}
             role={user.role}

@@ -14,7 +14,6 @@ export default function VendorDashboard() {
     localStorage.getItem("selectedClient") || ""
   );
 
-  // ---------------- FETCH DASHBOARD DATA ----------------
   useEffect(() => {
     const fetchDashboardData = async () => {
       setLoading(true);
@@ -22,22 +21,20 @@ export default function VendorDashboard() {
       if (!token) return alert("Authentication required");
 
       try {
-        // Fetch vendor details
-        const vendorRes = await fetch(`${API_BASE_URL}/api/vendor/details`, {
+        const vendorRes = await fetch(`${API_BASE_URL}/vendor/details`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const vendor = await vendorRes.json();
         setVendorData(vendor);
 
-        // Fetch vendor summary
-        const summaryRes = await fetch(`${API_BASE_URL}/api/vendor/vendor-summary`, {
+        const summaryRes = await fetch(`${API_BASE_URL}/vendor/vendor-summary`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const summaryData = await summaryRes.json();
         setSummary(summaryData.data?.content || "No summary available");
 
-        // Fetch all clients
-        const clientsRes = await fetch(`${API_BASE_URL}/api/shared/clients`, {
+
+        const clientsRes = await fetch(`${API_BASE_URL}/shared/clients`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const clientsData = await clientsRes.json();
@@ -53,11 +50,9 @@ export default function VendorDashboard() {
     fetchDashboardData();
   }, []);
 
-  // ---------------- CONTROL MODAL VISIBILITY ----------------
   useEffect(() => {
     if (!vendorData) return;
 
-    // Only show modal if vendor has no client assigned
     setSelectedClient(vendorData.clientId || "");
     const hasClient =
       vendorData.clientId !== null &&
@@ -67,13 +62,12 @@ export default function VendorDashboard() {
     setShowClientModal(hasClient);
   }, [vendorData]);
 
-  // ---------------- HANDLE CLIENT SELECTION ----------------
   const handleClientSelect = async () => {
     if (!selectedClient) return;
 
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE_URL}/api/vendor/set-client`, {
+      const res = await fetch(`${API_BASE_URL}/vendor/set-client`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -85,7 +79,7 @@ export default function VendorDashboard() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to set client");
 
-      // Update vendor data & localStorage
+
       setVendorData((prev) => ({
         ...prev,
         clientId: selectedClient,
@@ -106,7 +100,6 @@ export default function VendorDashboard() {
 
   return (
     <div className="p-6 space-y-6">
-      {/* ---------------- CLIENT SELECTION MODAL ---------------- */}
       {showClientModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-sm">
@@ -133,7 +126,6 @@ export default function VendorDashboard() {
         </div>
       )}
 
-      {/* ---------------- VENDOR DETAILS ---------------- */}
       <div className="bg-white rounded-xl shadow p-4">
         <h2 className="text-lg font-semibold mb-4">Vendor Details</h2>
         {vendorData ? (
@@ -149,7 +141,6 @@ export default function VendorDashboard() {
         )}
       </div>
 
-      {/* ---------------- SUMMARY COMPONENT ---------------- */}
       <SummaryDashboard
         vendorId={vendorData?.vendorId}
         role="VENDOR"

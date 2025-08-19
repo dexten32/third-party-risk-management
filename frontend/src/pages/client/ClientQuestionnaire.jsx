@@ -26,7 +26,7 @@ const ClientQuestionnairePage = () => {
         const token = getToken();
         if (!token) return;
 
-        const res = await fetch(`${API_BASE_URL}/api/client/client-vendors`, {
+        const res = await fetch(`${API_BASE_URL}/client/client-vendors`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();
@@ -59,7 +59,7 @@ const ClientQuestionnairePage = () => {
         const token = getToken();
         if (!token) return;
 
-        const res = await fetch(`${API_BASE_URL}/api/shared/vendor/${selectedVendor.id}/answers`, {
+        const res = await fetch(`${API_BASE_URL}/shared/vendor/${selectedVendor.id}/answers`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();

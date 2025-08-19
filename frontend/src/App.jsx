@@ -18,8 +18,6 @@ export default function App() {
   const [authChecked, setAuthChecked] = useState(false);
   const [user, setUser] = useState(null);
 
-  // This is the correct way to use the hook.
-  // The hook is called once, and the resetTimer function is stored.
   const resetInactivityTimer = useInactivityLogout();
 
   useEffect(() => {
@@ -28,16 +26,15 @@ export default function App() {
       const payload = getUserFromToken();
       if (payload?.exp * 1000 > Date.now()) {
         setUser(payload);
-        // Reset the timer when the app first loads with a valid token
         resetInactivityTimer();
       } else {
         logoutUser();
         setUser(null);
-        Navigate("/login"); // Redirect to login if token is invalid or expired
+        Navigate("/login"); 
       }
     }
     setAuthChecked(true);
-  }, [resetInactivityTimer]); // Add the reset function to the dependency array.
+  }, [resetInactivityTimer]);
 
   if (!authChecked) return <div>Loading...</div>;
 
@@ -45,7 +42,6 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
 
-      {/* Protected Routes */}
       <Route element={<PrivateRoute user={user} />}>
         <Route path="/company" element={<DashboardLayout user={user} />}>
           <Route path='summary' element={<CompanyDashboard />} />

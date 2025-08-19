@@ -6,10 +6,8 @@ export default function QuestionCard({ question, answer, readOnly }) {
 
   return (
     <div className="p-4 border rounded-lg bg-white shadow">
-      {/* Question text */}
       <h3 className="font-semibold mb-3">{question.label}</h3>
 
-      {/* If answer exists */}
       {answer ? (
         isFileType ? (
           <a
@@ -28,9 +26,7 @@ export default function QuestionCard({ question, answer, readOnly }) {
           </div>
         )
       ) : (
-        // No answer: show two buttons
         <div className="flex gap-3 justify-end mt-4">
-          {/* Upload button */}
           <button
             className={`flex items-center gap-2 px-3 py-1 rounded transition ${
               readOnly
@@ -42,7 +38,6 @@ export default function QuestionCard({ question, answer, readOnly }) {
             <FiUpload /> Upload
           </button>
 
-          {/* Comment button */}
           <button
             className={`flex items-center gap-2 px-3 py-1 rounded transition ${
               readOnly
