@@ -108,7 +108,7 @@ export default function AuthPage() {
   <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 p-4">
     <div className="flex items-center mb-8">
       <img
-        src="/src/assets/cynox_logo.svg" 
+        src="/frontend/src/assets/cynox_logo.svg" 
         alt="Cynox Security Logo"
         className="h-12 w-12 mr-3"
       />
