@@ -1,6 +1,5 @@
 import express from "express";
 import authMiddleware, { authorizeRoles } from "../../middlewares/authMiddleware.js";
-import roleCheck from "../../middlewares/roleCheck.js";
 import prisma from "../../prisma/client.js";
 import { cacheMiddleware } from "../../middlewares/cacheMiddleware.js";
 import { cacheKeys } from "../../utils/cacheKeys.js";
@@ -10,11 +9,10 @@ import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 
 const router = express.Router();
 
-// Get all users (clients/vendors/company)
 router.get(
   "/users",
   authMiddleware,
-  roleCheck("COMPANY"),
+  authorizeRoles("COMPANY"),
   cacheMiddleware(() => cacheKeys.allUsers()),
   async (req, res) => {
     try {
@@ -39,15 +37,14 @@ router.get(
   }
 );
 
-// Approve or reject user
 router.patch(
   "/approve/:userId",
   authMiddleware,
-  roleCheck("COMPANY"),
+  authorizeRoles("COMPANY"),
   cacheMiddleware(() => cacheKeys.allUsers()),
   async (req, res) => {
     const { userId } = req.params;
-    const { action } = req.body; // Must be "APPROVE" or "REJECT"
+    const { action } = req.body; 
 
     if (!["APPROVE", "REJECT"].includes(action)) {
       return res.status(400).json({ error: "Action must be APPROVE or REJECT" });
@@ -84,11 +81,11 @@ router.patch(
   }
 );
 
-// Vendors grouped by client
+
 router.get(
   "/vendors-by-client",
   authMiddleware,
-  roleCheck("COMPANY"),
+  authorizeRoles("COMPANY"),
   cacheMiddleware(() => cacheKeys.allVendors()),
   async (req, res) => {
     try {
@@ -133,11 +130,11 @@ router.get(
   }
 );
 
-// Dashboard stats for company
+
 router.get(
   "/stats",
   authMiddleware,
-  roleCheck("COMPANY"),
+  authorizeRoles("COMPANY"),
   cacheMiddleware(() => cacheKeys.companyDashboardStats()),
   async (req, res) => {
     try {
@@ -166,16 +163,15 @@ router.get(
   }
 );
 
-// Vendor details by ID
 router.get("/vendor/:vendorId", getVendorDetailsById);
 
-// Upload summary
+
 router.post("/summary/upload", authMiddleware, authorizeRoles("COMPANY"), uploadSummary);
 
-// Delete user
+
 router.delete("/delete-user/:userId", authMiddleware, authorizeRoles("COMPANY"), deleteUser);
 
-// S3 file signed URL
+
 const s3 = new S3Client({
   region: process.env.AWS_REGION,
   credentials: {

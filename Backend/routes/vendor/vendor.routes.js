@@ -13,11 +13,6 @@ import { cacheMiddleware } from "../../middlewares/cacheMiddleware.js";
 import { cacheKeys } from "../../utils/cacheKeys.js";
 
 const router = express.Router();
-
-/**
- * Submit questionnaire answer (file or comment)
- * Cache will be invalidated after submission inside controller if needed
- */
 router.post(
   "/questionnaire",
   authMiddleware,
@@ -26,7 +21,6 @@ router.post(
   submitQuestionnaire
 );
 
-// Get vendor's questionnaire answers (cached)
 router.get(
   "/questionnaire",
   authMiddleware,
@@ -136,7 +130,6 @@ router.patch(
         select: { id: true, name: true, clientId: true },
       });
 
-      // Optional: Invalidate cache if needed for client-vendor listing
       res.json({ message: "Client assigned successfully", vendor: updatedVendor });
     } catch (err) {
       console.error("Error setting client:", err);

@@ -25,7 +25,7 @@ const __dirname = dirname(__filename);
 const s3 = new S3Client({ region: process.env.AWS_REGION });
 
 // Middlewares
-app.use(cors({origin: 'http://localhost:5173', // frontend port
+app.use(cors({origin: process.env.VITE_PUBLIC_API_URL,
   credentials: true,}));
 app.use(express.json());
 app.use(helmet());
@@ -60,10 +60,9 @@ app.use('/api/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use(express.static(path.join(__dirname, "../frontend/dist")));
 
 // React Router fallback → always return index.html
-app.get("*", (req, res) => {
+app.get(/^\/(?!api).*/, (req, res) => {
   res.sendFile(path.join(__dirname, "../frontend/dist/index.html"));
 });
-
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({ error: "Route not found" });

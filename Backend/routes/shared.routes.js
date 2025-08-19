@@ -9,7 +9,6 @@ import { getSignedUrl as awsGetSignedUrl } from "@aws-sdk/s3-request-presigner";
 const router = express.Router();
 const s3Client = new S3Client({ region: process.env.AWS_REGION });
 
-// Helper to generate signed S3 URLs
 async function getSignedUrlForS3Key(key) {
   return awsGetSignedUrl(
     s3Client,
@@ -17,13 +16,10 @@ async function getSignedUrlForS3Key(key) {
       Bucket: process.env.AWS_BUCKET_NAME,
       Key: key
     }),
-    { expiresIn: 3600 } // 1 hour
+    { expiresIn: 3600 }
   );
 }
 
-/**
- * Get questionnaire status for a vendor (used by all roles)
- */
 router.get(
   "/questionnaire-status",
   authMiddleware,
@@ -35,7 +31,6 @@ router.get(
   async (req, res) => {
     try {
       const vendorId = req.user.role === "VENDOR" ? req.user.id : req.query.vendorId;
-      // You already have getQuestionnaireStats controller
       const data = await getQuestionnaireStats(req, vendorId);
       res.json({ success: true, data });
     } catch (err) {
@@ -45,9 +40,7 @@ router.get(
   }
 );
 
-/**
- * Get vendor answers (cached)
- */
+
 router.get(
   "/vendor/:vendorId/answers",
   authMiddleware,
@@ -96,9 +89,6 @@ router.get(
   }
 );
 
-/**
- * Get vendor summary (cached)
- */
 router.get(
   "/vendor-summary/:vendorId",
   authMiddleware,
@@ -139,9 +129,6 @@ router.get(
   }
 );
 
-/**
- * Get all approved clients (cached)
- */
 router.get(
   "/clients",
   authMiddleware,

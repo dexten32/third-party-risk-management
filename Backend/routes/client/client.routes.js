@@ -168,7 +168,7 @@ router.get(
   }
 );
 
-// ✅ Client's vendors for dashboard / list
+
 router.get(
   "/client-vendors",
   authMiddleware,
