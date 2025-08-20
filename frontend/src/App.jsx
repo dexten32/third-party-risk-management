@@ -9,7 +9,7 @@ import ClientDashboard from './pages/client/ClientDashboard';
 import VendorDashboard from './pages/vendor/VendorDashboard';
 import CompanyUserApproval from './pages/company/CompanyUserApproval';
 import CompanyQuestionnaire from './pages/company/CompanyQuestionnaire';
-import LoginPage from './pages/LoginPage';
+import LoginPage from './pages/loginPage/LoginPage';
 import useInactivityLogout from './utils/useInactivityLogout';
 import VendorQuestionnaire from './pages/vendor/VendorQuestionnaire';
 import ClientQuestionnaire from './pages/client/ClientQuestionnaire';
