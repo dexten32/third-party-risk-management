@@ -3,11 +3,11 @@ import QuestionnaireHeader from '../../components/questionnaireComponents/Questi
 import QuestionnaireList from '../../components/questionnaireComponents/QuestionnaireList';
 import { API_BASE_URL } from '../../utils/api';
 import { getToken } from '../../utils/auth';
-import { cacheGet, cacheSet, isCacheFresh } from '../../utils/cacheManager';
+import { cacheGet, cacheSet } from '../../utils/cacheManager';
 
+// Cache keys for API endpoints
 const USERS_CACHE_KEY = 'company-users';
 const ANSWERS_CACHE_KEY_PREFIX = 'vendor-answers';
-const CACHE_EXPIRY_MS = 30 * 60 * 1000;
 
 const CompanyQuestionnairePage = () => {
   const [clients, setClients] = useState([]);
@@ -16,33 +16,38 @@ const CompanyQuestionnairePage = () => {
   const [selectedClient, setSelectedClient] = useState(null);
   const [selectedVendor, setSelectedVendor] = useState(null);
   const [questionnaireAnswers, setQuestionnaireAnswers] = useState([]);
+
+  // Fetch all clients and vendors
   useEffect(() => {
     const fetchUsers = async () => {
+      const token = getToken();
+      if (!token) return;
+
       const cached = cacheGet(USERS_CACHE_KEY);
-      if (cached && isCacheFresh(cached.timestamp, CACHE_EXPIRY_MS)) {
-        const cachedUsers = cached.value;
-        setClients(cachedUsers.filter(u => u.role === 'CLIENT'));
-        setAllVendors(cachedUsers.filter(u => u.role === 'VENDOR'));
-        return;
+      const headers = { Authorization: `Bearer ${token}` };
+      if (cached?.etag) {
+        headers['If-None-Match'] = cached.etag;
       }
 
       try {
-        const token = getToken();
-        if (!token) return;
+        const res = await fetch(`${API_BASE_URL}/company/users`, { headers });
+        if (res.status === 304 && cached) {
+          const cachedUsers = cached.value;
+          setClients(cachedUsers.filter((u) => u.role === 'CLIENT'));
+          setAllVendors(cachedUsers.filter((u) => u.role === 'VENDOR'));
+        } else if (res.ok) {
+          const data = await res.json();
+          const usersArray = Array.isArray(data) ? data : data.data || [];
+          const etag = res.headers.get('etag');
 
-        const res = await fetch(`${API_BASE_URL}/company/users`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const data = await res.json();
-        const usersArray = Array.isArray(data) ? data : data.data || [];
+          const clientsList = usersArray.filter((u) => u.role === 'CLIENT');
+          const vendorsList = usersArray.filter((u) => u.role === 'VENDOR');
 
-        const clientsList = usersArray.filter(u => u.role === 'CLIENT');
-        const vendorsList = usersArray.filter(u => u.role === 'VENDOR');
+          setClients(clientsList);
+          setAllVendors(vendorsList);
 
-        setClients(clientsList);
-        setAllVendors(vendorsList);
-
-        cacheSet(USERS_CACHE_KEY, usersArray);
+          cacheSet(USERS_CACHE_KEY, usersArray, etag);
+        }
       } catch (err) {
         console.error('Error fetching users:', err);
       }
@@ -51,39 +56,44 @@ const CompanyQuestionnairePage = () => {
     fetchUsers();
   }, []);
 
+  // Filter vendors based on selected client
   useEffect(() => {
     if (!selectedClient) {
       setVendors([]);
     } else {
-      setVendors(allVendors.filter(v => v.clientId === selectedClient));
+      setVendors(allVendors.filter((v) => v.clientId === selectedClient));
     }
     setSelectedVendor(null);
     setQuestionnaireAnswers([]);
   }, [selectedClient, allVendors]);
 
+  // Fetch questionnaire answers for the selected vendor
   useEffect(() => {
     if (!selectedVendor?.id) return;
 
     const fetchAnswers = async () => {
       const cacheKey = `${ANSWERS_CACHE_KEY_PREFIX}-${selectedVendor.id}`;
       const cached = cacheGet(cacheKey);
-      if (cached && isCacheFresh(cached.timestamp, CACHE_EXPIRY_MS)) {
-        setQuestionnaireAnswers(cached.value);
-        return;
+      const token = getToken();
+      if (!token) return;
+
+      const headers = { Authorization: `Bearer ${token}` };
+      if (cached?.etag) {
+        headers['If-None-Match'] = cached.etag;
       }
 
       try {
-        const token = getToken();
-        if (!token) return;
+        const res = await fetch(`${API_BASE_URL}/shared/vendor/${selectedVendor.id}/answers`, { headers });
+        if (res.status === 304 && cached) {
+          setQuestionnaireAnswers(cached.value);
+        } else if (res.ok) {
+          const data = await res.json();
+          const answers = Array.isArray(data) ? data : data.answers || [];
+          const etag = res.headers.get('etag');
 
-        const res = await fetch(`${API_BASE_URL}/shared/vendor/${selectedVendor.id}/answers`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const data = await res.json();
-        const answers = Array.isArray(data) ? data : data.answers || [];
-
-        setQuestionnaireAnswers(answers);
-        cacheSet(cacheKey, answers);
+          setQuestionnaireAnswers(answers);
+          cacheSet(cacheKey, answers, etag);
+        }
       } catch (err) {
         console.error('Error fetching questionnaire answers:', err);
       }

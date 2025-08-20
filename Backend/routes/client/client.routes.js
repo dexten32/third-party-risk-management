@@ -1,9 +1,11 @@
 import express from "express";
-import authMiddleware from "../../middlewares/authMiddleware.js";
+import authMiddleware, { authorizeRoles } from "../../middlewares/authMiddleware.js";
 import roleCheck from "../../middlewares/roleCheck.js";
 import prisma from "../../prisma/client.js";
 import { cacheMiddleware } from "../../middlewares/cacheMiddleware.js";
 import { cacheKeys } from "../../utils/cacheKeys.js";
+import { setLastUpdated } from "../../utils/cacheManager.js";
+import etagCheck from "../../middlewares/etagCheck.js";
 
 const REQUIRED_QUESTION_COUNT = 5;
 const router = express.Router();
@@ -16,58 +18,63 @@ router.get("/dashboard", authMiddleware, roleCheck("CLIENT"), (req, res) => {
   });
 });
 
-// ✅ Dashboard stats for client
+
 router.get(
   "/dashboard/stats",
   authMiddleware,
-  roleCheck("CLIENT"),
-  cacheMiddleware((req) => cacheKeys.clientDashboardStats(req.user.id)),
+  authorizeRoles("CLIENT"),
+
+  // 👇 etagCheck wrapper
+  etagCheck(async (req) => {
+    const clientId = req.user.id;
+
+    const vendors = await prisma.user.findMany({
+      where: { role: "VENDOR", clientId },
+      select: { id: true },
+    });
+
+    const vendorIds = vendors.map((v) => v.id);
+
+    if (vendorIds.length === 0) {
+      return {
+        totalVendors: 0,
+        completedQuestionnaires: 0,
+        summariesUploaded: 0,
+      };
+    }
+
+    const [questionnaireCounts, summaries] = await Promise.all([
+      prisma.questionnaire.groupBy({
+        by: ["vendorId"],
+        where: { vendorId: { in: vendorIds } },
+        _count: true,
+      }),
+      prisma.summary.findMany({
+        where: { vendorId: { in: vendorIds } },
+        select: { vendorId: true },
+        distinct: ["vendorId"],
+      }),
+    ]);
+
+    const completedQuestionnaires = questionnaireCounts.filter(
+      (q) => q._count >= REQUIRED_QUESTION_COUNT
+    ).length;
+
+    return {
+      totalVendors: vendorIds.length,
+      completedQuestionnaires,
+      summariesUploaded: summaries.length,
+    };
+  }),
+
+  // 👇 Only called if no 304
   async (req, res) => {
     try {
-      const clientId = req.user.id;
-
-      const vendors = await prisma.user.findMany({
-        where: { role: "VENDOR", clientId },
-        select: { id: true },
-      });
-
-      const vendorIds = vendors.map((v) => v.id);
-
-      if (vendorIds.length === 0) {
-        return res.status(200).json({
-          success: true,
-          data: {
-            totalVendors: 0,
-            completedQuestionnaires: 0,
-            summariesUploaded: 0,
-          },
-        });
-      }
-
-      const [questionnaireCounts, summaries] = await Promise.all([
-        prisma.questionnaire.groupBy({
-          by: ["vendorId"],
-          where: { vendorId: { in: vendorIds } },
-          _count: true,
-        }),
-        prisma.summary.findMany({
-          where: { vendorId: { in: vendorIds } },
-          select: { vendorId: true },
-          distinct: ["vendorId"],
-        }),
-      ]);
-
-      const completedQuestionnaires = questionnaireCounts.filter(
-        (q) => q._count >= REQUIRED_QUESTION_COUNT
-      ).length;
+      await setLastUpdated(cacheKeys.clientDashboardStats(req.user.id));
 
       res.status(200).json({
         success: true,
-        data: {
-          totalVendors: vendorIds.length,
-          completedQuestionnaires,
-          summariesUploaded: summaries.length,
-        },
+        data: req.cachedData, // comes from etagCheck
       });
     } catch (err) {
       console.error("Error fetching client dashboard stats:", err.message);
@@ -79,7 +86,7 @@ router.get(
   }
 );
 
-// ✅ Vendors under this client
+
 router.get(
   "/vendors",
   authMiddleware,
@@ -130,7 +137,6 @@ router.get(
   }
 );
 
-// ✅ Summaries of vendors under this client
 router.get(
   "/summary",
   authMiddleware,

@@ -1,10 +1,11 @@
+/* eslint-disable no-unused-vars */
 import { useOutletContext } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { API_BASE_URL } from '../../utils/api';
 import SummaryDashboard from '../../components/SummaryComponents/SummaryDashboard';
 import mammoth from 'mammoth';
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf';
-import { cacheGet, cacheSet, isCacheFresh } from '../../utils/cacheManager';
+import { cacheGet, cacheSet } from '../../utils/cacheManager'; // 'isCacheFresh' is not needed here
 
 const CACHE_EXPIRY_MS = 30 * 60 * 1000;
 const COMPANY_STATS_KEY = 'company-stats';
@@ -25,44 +26,71 @@ export default function CompanyDashboard() {
       setLoading(true);
       try {
         if (selectedVendorId) {
+          // ---- Vendor Info ----
           const vendorInfoKey = `${VENDOR_INFO_KEY_PREFIX}-${selectedVendorId}`;
           const cachedVendor = cacheGet(vendorInfoKey);
-          if (cachedVendor && isCacheFresh(cachedVendor.timestamp, CACHE_EXPIRY_MS)) {
-            setVendorInfo(cachedVendor.value);
-          } else {
-            const vendorRes = await fetch(`${API_BASE_URL}/company/vendor/${selectedVendorId}`, {
-              headers: { Authorization: `Bearer ${token}` },
-            });
-            const vendorData = await vendorRes.json();
-            setVendorInfo(vendorData);
-            cacheSet(vendorInfoKey, vendorData);
+
+          let vendorHeaders = { Authorization: `Bearer ${token}` };
+          if (cachedVendor?.etag) {
+            vendorHeaders['If-None-Match'] = cachedVendor.etag;
           }
 
+          const vendorRes = await fetch(`${API_BASE_URL}/company/vendor/${selectedVendorId}`, {
+            headers: vendorHeaders,
+          });
+
+          if (vendorRes.status === 304 && cachedVendor) {
+            // Correctly set state from cached value
+            setVendorInfo(cachedVendor.value);
+          } else if (vendorRes.ok) {
+            const vendorData = await vendorRes.json();
+            // Correctly cache the value and etag
+            cacheSet(vendorInfoKey, vendorData, vendorRes.headers.get('etag'));
+            setVendorInfo(vendorData);
+          }
+
+          // ---- Vendor Summary ----
           const vendorSummaryKey = `${VENDOR_SUMMARY_KEY_PREFIX}-${selectedVendorId}`;
           const cachedSummary = cacheGet(vendorSummaryKey);
-          if (cachedSummary && isCacheFresh(cachedSummary.timestamp, CACHE_EXPIRY_MS)) {
+
+          let summaryHeaders = { Authorization: `Bearer ${token}` };
+          if (cachedSummary?.etag) {
+            summaryHeaders['If-None-Match'] = cachedSummary.etag;
+          }
+
+          const summaryRes = await fetch(`${API_BASE_URL}/shared/vendor-summary/${selectedVendorId}`, {
+            headers: summaryHeaders,
+          });
+
+          if (summaryRes.status === 304 && cachedSummary) {
             setSummaryText(cachedSummary.value);
-          } else {
-            const summaryRes = await fetch(`${API_BASE_URL}/shared/vendor-summary/${selectedVendorId}`, {
-              headers: { Authorization: `Bearer ${token}` },
-            });
+          } else if (summaryRes.ok) {
             const summaryData = await summaryRes.json();
             const content = summaryData?.data?.content || '';
             setSummaryText(content);
-            cacheSet(vendorSummaryKey, content);
+            cacheSet(vendorSummaryKey, content, summaryRes.headers.get('etag'));
           }
+
         } else {
+          // ---- Company Stats ----
           const cachedStats = cacheGet(COMPANY_STATS_KEY);
-          if (cachedStats && isCacheFresh(cachedStats.timestamp, CACHE_EXPIRY_MS)) {
+
+          let statsHeaders = { Authorization: `Bearer ${token}` };
+          if (cachedStats?.etag) {
+            statsHeaders['If-None-Match'] = cachedStats.etag;
+          }
+
+          const statsRes = await fetch(`${API_BASE_URL}/company/stats/`, {
+            headers: statsHeaders,
+          });
+
+          if (statsRes.status === 304 && cachedStats) {
             setCompanyStats(cachedStats.value);
-          } else {
-            const statsRes = await fetch(`${API_BASE_URL}/company/stats/`, {
-              headers: { Authorization: `Bearer ${token}` },
-            });
+          } else if (statsRes.ok) {
             const statsData = await statsRes.json();
             const stats = statsData?.data || null;
             setCompanyStats(stats);
-            cacheSet(COMPANY_STATS_KEY, stats);
+            cacheSet(COMPANY_STATS_KEY, stats, statsRes.headers.get('etag'));
           }
         }
       } catch (err) {
@@ -74,7 +102,10 @@ export default function CompanyDashboard() {
 
     fetchData();
   }, [selectedVendorId, token]);
+
+  // ---- PDF Extract ----
   const extractPdfText = async (file) => {
+    // ... (no changes here) ...
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
     let text = '';
@@ -85,6 +116,8 @@ export default function CompanyDashboard() {
     }
     return text.trim();
   };
+
+  // ---- File Upload ----
   const handleFileUpload = async (file) => {
     if (!file || !selectedVendorId) return;
     setUploading(true);
@@ -102,7 +135,7 @@ export default function CompanyDashboard() {
 
       if (extractedText) {
         setSummaryText(extractedText);
-        cacheSet(`${VENDOR_SUMMARY_KEY_PREFIX}-${selectedVendorId}`, extractedText); 
+        // Do not cache immediately, wait for the server response
       }
 
       const formData = new FormData();
@@ -116,7 +149,8 @@ export default function CompanyDashboard() {
       const data = await res.json();
       if (data?.data?.content) {
         setSummaryText(data.data.content);
-        cacheSet(`${VENDOR_SUMMARY_KEY_PREFIX}-${selectedVendorId}`, data.data.content);
+        // Correctly cache the response from the server
+        cacheSet(`${VENDOR_SUMMARY_KEY_PREFIX}-${selectedVendorId}`, data.data.content, res.headers.get('etag'));
       }
     } catch (err) {
       console.error('Error uploading file:', err);

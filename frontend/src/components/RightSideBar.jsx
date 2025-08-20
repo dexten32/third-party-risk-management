@@ -3,6 +3,11 @@ import { useState, useEffect, useMemo } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { API_BASE_URL } from '../utils/api';
 import { getToken } from '../utils/auth';
+import { cacheGet, cacheSet } from '../utils/cacheManager';
+
+// Define cache keys for each API endpoint
+const COMPANY_SIDEBAR_KEY = 'company-sidebar';
+const CLIENT_SIDEBAR_KEY = 'client-sidebar';
 
 export default function RightSidebar({ role, userId, selectedVendorId, setSelectedVendorId }) {
   const [collapsed, setCollapsed] = useState(false);
@@ -19,24 +24,66 @@ export default function RightSidebar({ role, userId, selectedVendorId, setSelect
         const token = getToken();
         if (!token) throw new Error("Authentication token not found.");
 
-        if (role === 'COMPANY') {
-          const res = await fetch(`${API_BASE_URL}/company/vendors-by-client`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          if (!res.ok) throw new Error((await res.json()).error || "Failed to fetch company sidebar data");
-          const result = await res.json();
-          setClientsData(Array.isArray(result.data) ? result.data : []);
-        } else if (role === 'CLIENT') {
-          const res = await fetch(`${API_BASE_URL}/client/client-vendors`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          if (!res.ok) throw new Error((await res.json()).error || "Failed to fetch client's vendors");
-          const result = await res.json();
-          const vendors = Array.isArray(result.data) ? result.data : [];
-          setClientVendors(vendors);
+        let res, result, cacheKey, cachedData, headers = { Authorization: `Bearer ${token}` };
 
-          if (vendors.length > 0 && selectedVendorId === null) {
-            setSelectedVendorId(vendors[0].id);
+        if (role === 'COMPANY') {
+          cacheKey = COMPANY_SIDEBAR_KEY;
+          cachedData = cacheGet(cacheKey);
+          if (cachedData?.etag) {
+            headers['If-None-Match'] = cachedData.etag;
+          }
+          res = await fetch(`${API_BASE_URL}/company/vendors-by-client`, { headers });
+
+          if (res.status === 304 && cachedData) {
+            const data = Array.isArray(cachedData.value) ? cachedData.value : [];
+            setClientsData(data);
+            // New logic: set initial selected vendor
+            const allVendors = data.flatMap(client => client.vendors);
+            if (allVendors.length > 0 && selectedVendorId === null) {
+              setSelectedVendorId(allVendors[0].id);
+            }
+          } else if (res.ok) {
+            result = await res.json();
+            const data = Array.isArray(result.data) ? result.data : [];
+            const etag = res.headers.get('etag');
+            setClientsData(data);
+            cacheSet(cacheKey, data, etag);
+            // New logic: set initial selected vendor
+            const allVendors = data.flatMap(client => client.vendors);
+            if (allVendors.length > 0 && selectedVendorId === null) {
+              setSelectedVendorId(allVendors[0].id);
+            }
+          } else {
+            throw new Error((await res.json()).error || "Failed to fetch company sidebar data");
+          }
+
+        } else if (role === 'CLIENT') {
+          cacheKey = `${CLIENT_SIDEBAR_KEY}-${userId}`;
+          cachedData = cacheGet(cacheKey);
+          if (cachedData?.etag) {
+            headers['If-None-Match'] = cachedData.etag;
+          }
+          res = await fetch(`${API_BASE_URL}/client/client-vendors`, { headers });
+
+          if (res.status === 304 && cachedData) {
+            const vendors = Array.isArray(cachedData.value) ? cachedData.value : [];
+            setClientVendors(vendors);
+            // New logic: set initial selected vendor
+            if (vendors.length > 0 && selectedVendorId === null) {
+              setSelectedVendorId(vendors[0].id);
+            }
+          } else if (res.ok) {
+            result = await res.json();
+            const vendors = Array.isArray(result.data) ? result.data : [];
+            const etag = res.headers.get('etag');
+            setClientVendors(vendors);
+            cacheSet(cacheKey, vendors, etag);
+            // New logic: set initial selected vendor
+            if (vendors.length > 0 && selectedVendorId === null) {
+              setSelectedVendorId(vendors[0].id);
+            }
+          } else {
+            throw new Error((await res.json()).error || "Failed to fetch client's vendors");
           }
         }
       } catch (err) {

@@ -2,11 +2,13 @@
 import React, { useEffect, useState } from 'react';
 import { getAuthHeader } from '../../utils/auth';
 import { API_BASE_URL } from '../../utils/api';
+import { cacheGet, cacheSet } from '../../utils/cacheManager';
 import ModalPortal from '../../components/ModalPortal';
 import { Trash2, CheckCircle, XCircle } from 'lucide-react';
 import DeleteConfirmationModal from '../../components/DeleteConfirmationModal';
 
-const POLL_INTERVAL_MS = 30*60*1000;
+// Using a cache key for the user list
+const USERS_CACHE_KEY = 'company-all-users';
 
 const CompanyUserApproval = () => {
   const [allUsers, setAllUsers] = useState([]);
@@ -14,21 +16,31 @@ const CompanyUserApproval = () => {
   const [showModalFor, setShowModalFor] = useState(null);
   const [confirmText, setConfirmText] = useState('');
 
-    const fetchUsers = async () => {
-      console.log('Fetching users...');
+  const fetchUsers = async () => {
+    console.log('Fetching users...');
     try {
-      const res = await fetch(`${API_BASE_URL}/company/users?fresh=true`, {
-        headers: getAuthHeader(),
-      });
-      if (res.ok) {
-          const result = await res.json();
-          console.log('Fetched users:', result.data);
-        if (Array.isArray(result.data)) {
-          setAllUsers(result.data);
-        } else {
-          console.warn('Unexpected data format:', result.data);
-          setAllUsers([]);
-        }
+      const cached = cacheGet(USERS_CACHE_KEY);
+      const headers = getAuthHeader();
+      if (cached?.etag) {
+        headers['If-None-Match'] = cached.etag;
+      }
+
+      const res = await fetch(`${API_BASE_URL}/company/users`, { headers });
+
+      if (res.status === 304 && cached) {
+        console.log('Using cached data (304 Not Modified).');
+        setAllUsers(cached.value);
+      } else if (res.ok) {
+        const result = await res.json();
+        console.log('Fetched fresh users:', result.data);
+        const usersArray = Array.isArray(result.data) ? result.data : [];
+        const etag = res.headers.get('etag');
+
+        setAllUsers(usersArray);
+        cacheSet(USERS_CACHE_KEY, usersArray, etag);
+      } else {
+        console.warn('Unexpected response status:', res.status);
+        setAllUsers([]);
       }
     } catch (err) {
       console.error('Failed to fetch users:', err);
@@ -39,12 +51,10 @@ const CompanyUserApproval = () => {
 
   useEffect(() => {
     fetchUsers();
-
-    const interval = setInterval(() => {
-      fetchUsers();
-    }, POLL_INTERVAL_MS);
-
-    return () => clearInterval(interval);
+    // This component is for a dashboard. Polling is not a good practice here.
+    // The component should refresh data when a user is approved, rejected, or deleted.
+    // The `handleAction` function already calls `fetchUsers` to refresh the list,
+    // which is the correct behavior. A simple initial fetch is sufficient.
   }, []);
 
   const handleDeleteClick = (userId) => {
@@ -58,7 +68,8 @@ const CompanyUserApproval = () => {
       headers: getAuthHeader(),
     });
     if (res.ok) {
-      setAllUsers((prev) => prev.filter((u) => u.id !== showModalFor));
+      // Refresh the user list after a successful delete
+      await fetchUsers();
     }
     setShowModalFor(null);
     setConfirmText('');
@@ -78,12 +89,10 @@ const CompanyUserApproval = () => {
         options.method = 'PATCH';
         options.body = JSON.stringify({ action: 'approve' });
         break;
-
       case 'reject':
       case 'delete':
         options.method = 'DELETE';
         break;
-
       default:
         console.error('Invalid action:', action);
         return;
@@ -92,7 +101,7 @@ const CompanyUserApproval = () => {
     try {
       const res = await fetch(endpoint, options);
       if (res.ok) {
-        setAllUsers((prev) => prev.filter((u) => u.id !== userId));
+        // Refresh the user list after a successful action
         await fetchUsers();
       } else {
         console.error(`Failed to ${action} user. Status:`, res.status);
@@ -151,10 +160,12 @@ const CompanyUserApproval = () => {
         </>
       )}
 
-          {showModalFor && (
-              <DeleteConfirmationModal onCancel={() => setShowModalFor(null)}
-                onConfirm={confirmDelete} />
-            )}
+      {showModalFor && (
+        <DeleteConfirmationModal
+          onCancel={() => setShowModalFor(null)}
+          onConfirm={confirmDelete}
+        />
+      )}
     </div>
   );
 };
@@ -204,6 +215,5 @@ const UserCard = ({ user, handleAction, handleDeleteClick }) => {
     </div>
   );
 };
-
 
 export default CompanyUserApproval;

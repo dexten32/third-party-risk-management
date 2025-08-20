@@ -1,8 +1,15 @@
-/* eslint-disable no-unused-vars */ 
+/* eslint-disable no-unused-vars */
 import React, { useEffect, useState } from "react";
 import { API_BASE_URL } from "../../utils/api";
 import Loader from "../../components/Loader";
 import SummaryDashboard from "../../components/SummaryComponents/SummaryDashboard";
+import { cacheGet, cacheSet } from "../../utils/cacheManager";
+import { getAuthHeader } from "../../utils/auth";
+
+// Define cache keys for each API endpoint
+const VENDOR_DETAILS_KEY = "vendor-details";
+const VENDOR_SUMMARY_KEY = "vendor-summary";
+const SHARED_CLIENTS_KEY = "shared-clients";
 
 export default function VendorDashboard() {
   const [loading, setLoading] = useState(true);
@@ -21,24 +28,68 @@ export default function VendorDashboard() {
       if (!token) return alert("Authentication required");
 
       try {
+        // ---- Fetch Vendor Details (with ETag caching) ----
+        const vendorDetailsCached = cacheGet(VENDOR_DETAILS_KEY);
+        const vendorDetailsHeaders = getAuthHeader();
+        if (vendorDetailsCached?.etag) {
+          vendorDetailsHeaders["If-None-Match"] = vendorDetailsCached.etag;
+        }
+
         const vendorRes = await fetch(`${API_BASE_URL}/vendor/details`, {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: vendorDetailsHeaders,
         });
-        const vendor = await vendorRes.json();
-        setVendorData(vendor);
+
+        if (vendorRes.status === 304 && vendorDetailsCached) {
+          setVendorData(vendorDetailsCached.value);
+        } else if (vendorRes.ok) {
+          const vendor = await vendorRes.json();
+          setVendorData(vendor);
+          cacheSet(VENDOR_DETAILS_KEY, vendor, vendorRes.headers.get("etag"));
+        }
+
+        // ---- Fetch Vendor Summary (with ETag caching) ----
+        const vendorSummaryCached = cacheGet(VENDOR_SUMMARY_KEY);
+        const vendorSummaryHeaders = getAuthHeader();
+        if (vendorSummaryCached?.etag) {
+          vendorSummaryHeaders["If-None-Match"] = vendorSummaryCached.etag;
+        }
 
         const summaryRes = await fetch(`${API_BASE_URL}/vendor/vendor-summary`, {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: vendorSummaryHeaders,
         });
-        const summaryData = await summaryRes.json();
-        setSummary(summaryData.data?.content || "No summary available");
 
+        if (summaryRes.status === 304 && vendorSummaryCached) {
+          setSummary(vendorSummaryCached.value);
+        } else if (summaryRes.ok) {
+          const summaryData = await summaryRes.json();
+          const content = summaryData.data?.content || "No summary available";
+          setSummary(content);
+          cacheSet(VENDOR_SUMMARY_KEY, content, summaryRes.headers.get("etag"));
+        } else {
+          setSummary("No summary available"); // Handle non-304/200 responses gracefully
+        }
+
+        // ---- Fetch Shared Clients (with ETag caching) ----
+        const clientsCached = cacheGet(SHARED_CLIENTS_KEY);
+        const clientsHeaders = getAuthHeader();
+        if (clientsCached?.etag) {
+          clientsHeaders["If-None-Match"] = clientsCached.etag;
+        }
 
         const clientsRes = await fetch(`${API_BASE_URL}/shared/clients`, {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: clientsHeaders,
         });
-        const clientsData = await clientsRes.json();
-        if (Array.isArray(clientsData)) setClients(clientsData);
+
+        if (clientsRes.status === 304 && clientsCached) {
+          setClients(clientsCached.value);
+        } else if (clientsRes.ok) {
+          const clientsData = await clientsRes.json();
+          const clientsArray = Array.isArray(clientsData) ? clientsData : clientsData.data || [];
+          if (Array.isArray(clientsArray)) {
+            setClients(clientsArray);
+            cacheSet(SHARED_CLIENTS_KEY, clientsArray, clientsRes.headers.get("etag"));
+          }
+        }
       } catch (err) {
         console.error("Error loading vendor dashboard:", err);
         alert("Failed to load vendor dashboard. Please refresh.");
@@ -52,19 +103,18 @@ export default function VendorDashboard() {
 
   useEffect(() => {
     if (!vendorData) return;
-
-    setSelectedClient(vendorData.clientId || "");
     const hasClient =
       vendorData.clientId !== null &&
       vendorData.clientId !== undefined &&
       vendorData.clientId !== "";
-
-    setShowClientModal(hasClient);
+    setShowClientModal(!hasClient);
+    if (hasClient) {
+      localStorage.setItem("selectedClient", vendorData.clientId);
+    }
   }, [vendorData]);
 
   const handleClientSelect = async () => {
     if (!selectedClient) return;
-
     try {
       const token = localStorage.getItem("token");
       const res = await fetch(`${API_BASE_URL}/vendor/set-client`, {
@@ -79,6 +129,10 @@ export default function VendorDashboard() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to set client");
 
+      // Invalidate the cache for vendor details and clients after a change
+      // so the next fetch will get the fresh data.
+      cacheSet(VENDOR_DETAILS_KEY, null, null);
+      cacheSet(SHARED_CLIENTS_KEY, null, null);
 
       setVendorData((prev) => ({
         ...prev,

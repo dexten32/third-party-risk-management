@@ -6,6 +6,7 @@ import { cacheKeys } from "../../utils/cacheKeys.js";
 import { getVendorDetailsById, uploadSummary, deleteUser } from "../../controllers/user.controller.js";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
+import etagCheck from "../../middlewares/etagCheck.js"
 
 const router = express.Router();
 
@@ -135,21 +136,30 @@ router.get(
   "/stats",
   authMiddleware,
   authorizeRoles("COMPANY"),
-  cacheMiddleware(() => cacheKeys.companyDashboardStats()),
+
+  // 👇 Wrap with etagCheck
+  etagCheck(async () => {
+    // This is the data used for generating the ETag
+    return await Promise.all([
+      prisma.user.count({ where: { role: "CLIENT", verificationStatus: "APPROVED" } }),
+      prisma.user.count({ where: { role: "VENDOR", verificationStatus: "APPROVED" } }),
+      prisma.user.count({
+        where: {
+          role: { in: ["CLIENT", "VENDOR"] },
+          verificationStatus: "PENDING",
+        },
+      }),
+      prisma.summary.count(),
+    ]);
+  }),
+
+  // 👇 Only runs if no 304
   async (req, res) => {
     try {
-      const [verifiedClients, verifiedVendors, pendingUsers, totalSummaries] =
-        await Promise.all([
-          prisma.user.count({ where: { role: "CLIENT", verificationStatus: "APPROVED" } }),
-          prisma.user.count({ where: { role: "VENDOR", verificationStatus: "APPROVED" } }),
-          prisma.user.count({
-            where: {
-              role: { in: ["CLIENT", "VENDOR"] },
-              verificationStatus: "PENDING",
-            },
-          }),
-          prisma.summary.count(),
-        ]);
+      const [verifiedClients, verifiedVendors, pendingUsers, totalSummaries] = req.cachedData;
+
+      // Update cache timestamp
+      await setLastUpdated(cacheKeys.companyDashboardStats());
 
       res.status(200).json({
         message: "Company dashboard stats fetched.",

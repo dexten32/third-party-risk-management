@@ -1,52 +1,69 @@
+/* eslint-disable no-unused-vars */
 import React, { useEffect, useState } from "react";
 import QuestionnaireList from "../../components/questionnaireComponents/QuestionnaireList";
 import { API_BASE_URL } from "../../utils/api";
+import { cacheGet, cacheSet } from "../../utils/cacheManager";
+import { getToken } from "../../utils/auth";
+
+const ANSWERS_CACHE_KEY_PREFIX = 'vendor-answers';
 
 export default function VendorQuestionnaire() {
   const [vendorId, setVendorId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submittedAnswers, setSubmittedAnswers] = useState([]);
 
-  const token = localStorage.getItem("token");
-  const decodeToken = (token) => {
-    if (!token) return null;
-    try {
-      return JSON.parse(atob(token.split(".")[1]));
-    } catch (err) {
-      console.error("Failed to decode token", err);
-      return null;
-    }
-  };
-
+  // Use a single useEffect for a cleaner flow
   useEffect(() => {
+    const token = getToken();
     if (!token) {
       setLoading(false);
       return;
     }
-    const decoded = decodeToken(token);
-    const userId = decoded?.userId || null;
-    setVendorId(userId);
-    setLoading(false);
-  }, [token]);
-
-  useEffect(() => {
-    if (!vendorId || !token) return;
 
     const fetchAnswers = async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/shared/vendor/${vendorId}/answers`, {
-          headers: { Authorization: `Bearer ${token}` },
+        const decodedToken = JSON.parse(atob(token.split(".")[1]));
+        const userId = decodedToken?.userId || null;
+        if (!userId) {
+          setLoading(false);
+          return;
+        }
+
+        const cacheKey = `${ANSWERS_CACHE_KEY_PREFIX}-${userId}`;
+        const cached = cacheGet(cacheKey);
+        const headers = { Authorization: `Bearer ${token}` };
+        
+        if (cached?.etag) {
+          headers['If-None-Match'] = cached.etag;
+        }
+        
+        const res = await fetch(`${API_BASE_URL}/shared/vendor/${userId}/answers`, {
+          headers: headers,
         });
-        const data = await res.json();
-        setSubmittedAnswers(data?.answers || []);
+        
+        if (res.status === 304 && cached) {
+          setSubmittedAnswers(cached.value);
+        } else if (res.ok) {
+          const data = await res.json();
+          const answers = data?.answers || [];
+          const etag = res.headers.get('etag');
+
+          setSubmittedAnswers(answers);
+          cacheSet(cacheKey, answers, etag);
+        } else {
+          // Handle other response statuses, like 404, gracefully
+          setSubmittedAnswers([]);
+        }
       } catch (err) {
         console.error("Failed to fetch submitted answers", err);
         setSubmittedAnswers([]);
+      } finally {
+        setLoading(false);
       }
     };
-
+    
     fetchAnswers();
-  }, [vendorId, token]);
+  }, []);
 
   if (loading) return <p>Loading your questionnaire...</p>;
   if (!vendorId) return <p>Unable to load your questionnaire. Please log in again.</p>;
@@ -57,7 +74,7 @@ export default function VendorQuestionnaire() {
       <QuestionnaireList
         userRole="VENDOR"
         vendorId={vendorId}
-        token={token}
+        token={getToken()}
         initialAnswers={submittedAnswers}
       />
     </div>
