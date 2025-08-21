@@ -1,7 +1,8 @@
 import { VerificationStatus } from "@prisma/client";
 import prisma from "../prisma/client.js";
 import bcrypt from "bcryptjs";
-import {jwtDecode} from "jwt-decode";
+import { jwtDecode } from "jwt-decode";
+import jwt from "jsonwebtoken";
 
 export const signup = async (req, res) => {
   const { name, email, password, role, clientId } = req.body;
