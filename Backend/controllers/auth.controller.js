@@ -1,12 +1,22 @@
 import { VerificationStatus } from "@prisma/client";
 import prisma from "../prisma/client.js";
 import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
+import {jwtDecode} from "jwt-decode";
 
 export const signup = async (req, res) => {
   const { name, email, password, role, clientId } = req.body;
 
   try {
+    if (role === "COMPANY" && (!req.user || req.user.role !== "COMPANY")) {
+      return res.status(403).json({ error: "Only admins can create another admin" });
+    }
+
+    if (!req.user) {
+      
+      if (role !== "CLIENT" && role !== "VENDOR") {
+        return res.status(403).json({ error: "Invalid role for public signup" });
+      }
+    }
     // Check for existing user
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
@@ -56,9 +66,10 @@ export const login = async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: '1d' } // 1 week expiry
     );
+    const decode = jwtDecode(token);
 
     return res.json({
-      token: token,
+      token,
       user: {
         id: user.id,
         name: user.name,

@@ -124,7 +124,7 @@ export default function LoginPage() {
         {/* Header aligned to the top with a subtle animation */}
         <div className="flex items-center mt-12 mb-8 fade-in-up" style={{ animationDelay: '0.2s' }}>
           <img
-            src="/src/assets/cynox_logo.svg"
+            src="src/assets/cynox_logo.svg"
             alt="Cynox Security Logo"
             className="h-20 w-20 mr-4"
           />

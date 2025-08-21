@@ -1,50 +1,50 @@
 /* eslint-disable no-unused-vars */
-import {jwtDecode} from 'jwt-decode';
+import { jwtDecode } from 'jwt-decode';
 
 const TOKEN_KEY = 'token';
 
-// Save token to localStorage
+/* ------------------ Token Storage ------------------ */
 export const saveToken = (token) => {
   localStorage.setItem(TOKEN_KEY, token);
 };
 
-// Get token from localStorage
 export const getToken = () => {
   return localStorage.getItem(TOKEN_KEY);
 };
 
-// Remove token (logout)
 export const clearToken = () => {
   localStorage.removeItem(TOKEN_KEY);
 };
 
-// Check if user is logged in
+/* ------------------ Auth Checks ------------------ */
 export const isLoggedIn = () => {
   const token = getToken();
   if (!token) return false;
 
   try {
     const { exp } = jwtDecode(token);
-    return exp * 1000 > Date.now(); // Not expired
-  } catch (err) {
+    return exp * 1000 > Date.now(); // token not expired
+  } catch {
     return false;
   }
 };
 
-// Decode token to get user info (userId, role, etc.)
 export const getUserFromToken = () => {
   const token = getToken();
   if (!token) return null;
 
   try {
-    const decoded = jwtDecode(token);
-    return decoded;
-  } catch (err) {
+    return jwtDecode(token); // { id, role, exp, ... }
+  } catch {
     return null;
   }
 };
 
-// Login: expects response from backend like { token, user }
+export const getUserRole = () => {
+  return getUserFromToken()?.role || null;
+};
+
+/* ------------------ Auth Actions ------------------ */
 export const loginUser = async (email, password) => {
   try {
     const response = await fetch('/api/auth/login', {
@@ -54,7 +54,6 @@ export const loginUser = async (email, password) => {
     });
 
     const data = await response.json();
-
     if (!response.ok) throw new Error(data.error || 'Login failed');
 
     saveToken(data.token);
@@ -64,66 +63,37 @@ export const loginUser = async (email, password) => {
   }
 };
 
-// Logout user
-// src/utils/auth.js (modified)
-
-// ... (other functions are unchanged) ...
-
-export const logoutUser = (navigate) => {
-  clearToken();
-  if (navigate) {
-    navigate('/login');
-  } else {
-    // Fallback for non-React contexts or where navigate is not available
-    window.location.href = '/login';
-  }
-};
-
-
-export const getAuthHeader = () => {
-  const token = localStorage.getItem('token');
-  return {
-    Authorization: `Bearer ${token}`,
-    'Content-Type': 'application/json'
-  };
-};
-
-
-export const getUserRole = () => {
-  const user = getUserFromToken();
-  return user?.role || null;
-};
-
-
-export const decodeToken = () => {
-  const token = localStorage.getItem('token'); // your JWT from login
-  if (!token) return null;
-
-  try {
-    return jwtDecode(token); // returns { id, role, exp, ... }
-  } catch (error) {
-    console.error('Error decoding token:', error);
-    return null;
-  }
-};
-
-
-// src/utils/auth.js
-
 export const signupUser = async ({ name, phone, email, password, role }) => {
   try {
     const response = await fetch('/api/auth/signup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email, password, role }),
+      body: JSON.stringify({ name, phone, email, password, role }),
     });
 
     const data = await response.json();
-
     if (!response.ok) throw new Error(data.error || 'Signup failed');
 
     return { success: true };
   } catch (err) {
     return { success: false, error: err.message };
   }
+};
+
+export const logoutUser = (navigate) => {
+  clearToken();
+  if (navigate) {
+    navigate('/login');
+  } else {
+    window.location.href = '/login'; // fallback
+  }
+};
+
+/* ------------------ Helpers ------------------ */
+export const getAuthHeader = () => {
+  const token = getToken();
+  return {
+    Authorization: `Bearer ${token}`,
+    'Content-Type': 'application/json',
+  };
 };

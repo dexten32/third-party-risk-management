@@ -4,10 +4,10 @@ import { getAuthHeader } from '../../utils/auth';
 import { API_BASE_URL } from '../../utils/api';
 import { cacheGet, cacheSet } from '../../utils/cacheManager';
 import ModalPortal from '../../components/ModalPortal';
-import { Trash2, CheckCircle, XCircle } from 'lucide-react';
+import { Trash2, CheckCircle, XCircle, Plus } from 'lucide-react';
 import DeleteConfirmationModal from '../../components/DeleteConfirmationModal';
 
-// Using a cache key for the user list
+
 const USERS_CACHE_KEY = 'company-all-users';
 
 const CompanyUserApproval = () => {
@@ -15,6 +15,12 @@ const CompanyUserApproval = () => {
   const [loading, setLoading] = useState(true);
   const [showModalFor, setShowModalFor] = useState(null);
   const [confirmText, setConfirmText] = useState('');
+
+  // NEW STATE for Add Admin modal
+  const [showAddAdminModal, setShowAddAdminModal] = useState(false);
+  const [adminName, setAdminName] = useState('');
+  const [adminEmail, setAdminEmail] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
 
   const fetchUsers = async () => {
     console.log('Fetching users...');
@@ -51,10 +57,6 @@ const CompanyUserApproval = () => {
 
   useEffect(() => {
     fetchUsers();
-    // This component is for a dashboard. Polling is not a good practice here.
-    // The component should refresh data when a user is approved, rejected, or deleted.
-    // The `handleAction` function already calls `fetchUsers` to refresh the list,
-    // which is the correct behavior. A simple initial fetch is sufficient.
   }, []);
 
   const handleDeleteClick = (userId) => {
@@ -68,7 +70,6 @@ const CompanyUserApproval = () => {
       headers: getAuthHeader(),
     });
     if (res.ok) {
-      // Refresh the user list after a successful delete
       await fetchUsers();
     }
     setShowModalFor(null);
@@ -101,7 +102,6 @@ const CompanyUserApproval = () => {
     try {
       const res = await fetch(endpoint, options);
       if (res.ok) {
-        // Refresh the user list after a successful action
         await fetchUsers();
       } else {
         console.error(`Failed to ${action} user. Status:`, res.status);
@@ -111,12 +111,57 @@ const CompanyUserApproval = () => {
     }
   };
 
+  const handleAddAdminSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const headers = {
+        ...getAuthHeader(),
+        'Content-Type': 'application/json',
+      };
+      console.log(headers);
+      const res = await fetch(`${API_BASE_URL}/auth/signup`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          name: adminName,
+          email: adminEmail,
+          password: adminPassword,
+          role: 'COMPANY',
+          clientId: null
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        alert('Admin created successfully!');
+        setShowAddAdminModal(false);
+        setAdminName('');
+        setAdminEmail('');
+        setAdminPassword('');
+        await fetchUsers();
+      } else {
+        alert(data.error || 'Failed to create admin');
+      }
+    } catch (err) {
+      console.error('Error creating admin:', err);
+      alert('Something went wrong');
+    }
+  };
+
   const pendingUsers = allUsers.filter((u) => u.verificationStatus === 'PENDING');
   const approvedUsers = allUsers.filter((u) => u.verificationStatus === 'APPROVED');
 
   return (
     <div className="p-6 space-y-8">
-      <h2 className="text-2xl font-semibold">User Approval Panel</h2>
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-semibold">User Approval Panel</h2>
+        <button
+          onClick={() => setShowAddAdminModal(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-100 border-blue-600 text-blue-600 rounded-md hover:border-blue-700 transition"
+        >
+          <Plus size={18} /> Add Admin
+        </button>
+      </div>
 
       {loading ? (
         <p>Loading...</p>
@@ -165,6 +210,64 @@ const CompanyUserApproval = () => {
           onCancel={() => setShowModalFor(null)}
           onConfirm={confirmDelete}
         />
+      )}
+
+      {showAddAdminModal && (
+        <ModalPortal>
+          <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+            <div className="bg-white rounded-lg shadow-lg p-6 w-96">
+              <h2 className="text-xl font-semibold mb-4">Add New Admin</h2>
+              <form onSubmit={handleAddAdminSubmit} className="space-y-4">
+                <input
+                  type="text"
+                  placeholder="Full Name"
+                  value={adminName}
+                  onChange={(e) => setAdminName(e.target.value)}
+                  required
+                  className="w-full p-2 border rounded bg-white border-gray-600"
+                />
+                <input
+                  type="email"
+                  placeholder="Email Address"
+                  value={adminEmail}
+                  onChange={(e) => setAdminEmail(e.target.value)}
+                  required
+                  className="w-full p-2 border rounded bg-white border-gray-600"
+                />
+                <input
+                  type="password"
+                  placeholder="Password"
+                  value={adminPassword}
+                  onChange={(e) => setAdminPassword(e.target.value)}
+                  required
+                  className="w-full p-2 border rounded bg-white border-gray-600"
+                />
+                {/* Fixed role field */}
+                <input
+                  type="text"
+                  value="COMPANY"
+                  disabled
+                  className="w-full p-2 border rounded bg-gray-100 text-gray-600 cursor-not-allowed"
+                />
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowAddAdminModal(false)}
+                    className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-blue-100 border-blue-600 text-blue-600 rounded hover:border-blue-700"
+                  >
+                    Create Admin
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </ModalPortal>
       )}
     </div>
   );
