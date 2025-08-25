@@ -8,9 +8,9 @@ export const signup = async (req, res) => {
   const { name, email, password, role, clientId } = req.body;
 
   try {
-    if (role === "COMPANY" && (!req.user || req.user.role !== "COMPANY")) {
-      return res.status(403).json({ error: "Only admins can create another admin" });
-    }
+    // if (role === "COMPANY" && (!req.user || req.user.role !== "COMPANY")) {
+    //   return res.status(403).json({ error: "Only admins can create another admin" });
+    // }
 
     if (!req.user) {
       
